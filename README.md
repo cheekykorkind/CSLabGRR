@@ -1,10 +1,15 @@
 GRR client 제작을 위한 프로젝트 입니다.
 --------------------------------------
-* #### Python 2.7, paramiko, PyQt5 사용합니다.
+* #### Python 3.5.2, paramiko, PyQt5 사용합니다.
+
+Python 3.5.2
+-------------
+* https://www.python.org/downloads/windows/
+* 항목명 : Download Windows x86-64 executable installer
 
 PyQt5 설치
 -------------
-* https://github.com/pyqt/python-qt5
+* pip3 install PyQT5
 
 paramiko 설치
 -------------
