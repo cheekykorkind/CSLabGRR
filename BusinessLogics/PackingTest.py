@@ -1,9 +1,11 @@
 #-*- coding: utf-8 -*-
 import sys
 import re
-import os
+import os, io
 import math
 from collections import Counter
+import time
+import itertools
 
 '''
 start함수
@@ -29,36 +31,60 @@ class PackingTest():
 	def __init__(self):
 		print('This is PackingTest.');
 		self.packingInfo = {'entropies': 0, 'packedFile': ''};
+		
 	
 	# 판단시작
-	def start(self, fileName):
-		fh = open(fileName, 'rb');
-		if not self.checkMZSignature(fh): fh.close(); return False;	# PE파일이 아니면 종료
- 		
-		IMAGE_DOS_HEADER_offset = 0;
-		IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
-		entryPointOffsets = self.getEntryPointOffset(fh, IMAGE_NT_HEADERS_offset);
-		if entryPointOffsets == 0: fh.close(); return False;	# WRITE 권한이 있는 섹션이 없으므로 종료
- 		
-		entropy = self.getEntropys(fh, entryPointOffsets); 
-		if entropy >= 6.85:
-			self.packingInfo['entropies'] = entropy;
-			self.packingInfo['packedFile'] = self.fileName;
-			fh.close();  # 파일 닫기
-			return self.packingInfo;
-		else:
-			self.packingInfo['entropies'] = entropy;
-			self.packingInfo['packedFile'] = 'x';
-			fh.close();  # 파일 닫기
-			return self.packingInfo;			 
+	def start(self, fileList, pbar, timerCounter):
+		packingInfoList = [];
+		currentLoopCounter = 0;		
+		
+		for file in fileList:
+			currentLoopCounter += 1;
+		
+			fh = open(file, 'rb');
+			if not self.checkMZSignature(fh): fh.close(); continue;	# PE파일이 아니면 종료
+			
+			IMAGE_DOS_HEADER_offset = 0;
+			IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
+			entryPointOffsets = self.getEntryPointOffset(fh, IMAGE_NT_HEADERS_offset);
+			if entryPointOffsets == 0: fh.close(); continue;	# WRITE 권한이 있는 섹션이 없으므로 종료
+			
+			entropy = self.getEntropys(fh, entryPointOffsets); 
 
+			packingInfo = {'entropies': 0, 'packedFile': ''};
+			packingInfo['entropies'] = entropy;
+			packingInfo['packedFile'] = file;
+			
+			packingInfoList.append(packingInfo);
+				
+			timerCounter = 100 * currentLoopCounter / len(fileList);
+			pbar.setValue(timerCounter);
+			
+			fh.close();  # 파일 닫기
+
+		return packingInfoList; 
+	
 	# 개발 단계에서 엔트로피 테스트용이다.
-	def startReadAll(self, fileName):
-		fh = open(fileName, 'rb');
-		self.packingInfo['entropies'] = self.readAll(fh);
-		self.packingInfo['packedFile'] = 'x';
+	def startReadAll(self, fileList, pbar, timerCounter):
+
+		packingInfoList = [];
+		currentLoopCounter = 0;
+
+		for file in fileList:
+			currentLoopCounter += 1;
+		
+			fh = open(file, 'rb');
+			packingInfo = {'entropies': 0, 'packedFile': ''};
+			packingInfo['entropies'] = self.readAll(fh);
+			packingInfo['packedFile'] = 'x';
+			packingInfoList.append(packingInfo);
+			
+			timerCounter = 100 * currentLoopCounter / len(fileList);
+			pbar.setValue(timerCounter);
+			
 		fh.close();  # 파일 닫기
-		return self.packingInfo; 
+		
+		return packingInfoList; 
 		
 	# MZ signature를 확인해서 PE파일인지 확인한다.
 	def checkMZSignature(self, fh):
@@ -140,9 +166,8 @@ class PackingTest():
 		
 		fh.seek(0);
 
-
 		while True:
-			readStr = fh.read(1).hex();
+			readStr = fh.read().hex();
 			readStrLen = len(readStr);
 			if readStrLen == 0: break;
 			bytesStr += readStr; 
@@ -151,6 +176,7 @@ class PackingTest():
 		entropy = -sum( count/lns * math.log(count/lns, 2) for count in p.values());
 
 		return entropy;
+	
 	# open(rb)의 결과인 bytes 타입의 값을 Little endian -> Big endian으로 바꾸고 hex String으로 바꾼다. 
 	def getBytesStringValue(self, bytesStrLength, bytesStr):
 		if bytesStrLength == 1:
@@ -164,11 +190,39 @@ class PackingTest():
 			hexStr = bytesStr.hex();
 			reverseHexStr = hexStr[6:8] + hexStr[4:6] + hexStr[2:4] + hexStr[0:2];
 			return int(reverseHexStr, 16);
-		
-#		 ddf = int(ord(FH.read(4)));
-#		 ddf = int(struct.pack('>L', FH.read(4)));
-#		 totallen = os.fstat(FH.fileno()).st_size;
-#		 print('File size is %d.' % totallen);		
-# f.seek(offset, from_what) 쓰면 원하는 위치를 읽을수있음.ㄴ		
-		# 00000108
-		# hex(int(reverseHexStr, 16)); str 타입으로 0x어쩌고 나옴
+
+
+# 	# 판단시작
+# 	def start(self, fileList, pbar, timerCounter):
+# 		packingInfoList = [];
+# 		currentLoopCounter = 0;		
+# 		
+# 		for file in fileList:
+# 			currentLoopCounter += 1;
+# 		
+# 			fh = open(file, 'rb');
+# 			if not self.checkMZSignature(fh): fh.close(); pbar.setValue(100); return [];	# PE파일이 아니면 종료
+# 			
+# 			IMAGE_DOS_HEADER_offset = 0;
+# 			IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
+# 			entryPointOffsets = self.getEntryPointOffset(fh, IMAGE_NT_HEADERS_offset);
+# 			if entryPointOffsets == 0: fh.close(); pbar.setValue(100); return [];	# WRITE 권한이 있는 섹션이 없으므로 종료
+# 			
+# 			entropy = self.getEntropys(fh, entryPointOffsets); 
+# 			if entropy >= 6.85:
+# 				packingInfo = {'entropies': 0, 'packedFile': ''};
+# 				packingInfo['entropies'] = entropy;
+# 				packingInfo['packedFile'] = file;
+# 			else:
+# 				packingInfo = {'entropies': 0, 'packedFile': ''};
+# 				packingInfo['entropies'] = entropy;
+# 				packingInfo['packedFile'] = 'x';
+# 			
+# 			packingInfoList.append(packingInfo);
+# 				
+# 			timerCounter = 100 * currentLoopCounter / len(fileList);
+# 			pbar.setValue(timerCounter);
+# 			
+# 			fh.close();  # 파일 닫기
+# 
+# 		return packingInfoList; 	

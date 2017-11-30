@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt, pyqtSlot, QBasicTimer
 
 from searchFiles import SearchFiles
 from PackingTest import PackingTest
+import time
 
 class Form(QWidget):
     def __init__(self):
@@ -49,7 +50,7 @@ class Form(QWidget):
 
 
         self.progressTimer = QBasicTimer(); # 프로그래스 바에 쓰는 타이머 인스턴스
-        self.timerCounter = 0;  # 프로그래스 바 진행상황 표시에 사용할 변수
+        self.timerCounter = 1;  # 프로그래스 바 진행상황 표시에 사용할 변수
         
         self._PackingTest = PackingTest();  # 패킹 테스트하는 인스턴스
         
@@ -75,21 +76,18 @@ class Form(QWidget):
         self.progressTimer.start(100, self);
          
         if fileListLength == 0: self.pbar.setValue(100); return ;
-         
+        
+        start_time = time.time()
+        
+        # 패킹 파일을 검사한다.
         testResult = [];
-        currentLoopCounter = 0; # 프로그래스 바의 진행 비율을 측정하기 위한 변수이다.
+#         testResult = self._PackingTest.start(fileList, self.pbar, self.timerCounter);
+        testResult = self._PackingTest.startReadAll(fileList, self.pbar, self.timerCounter);
+        
+        print("--- %s seconds ---" %(time.time() - start_time))
             
-        for i in fileList:
-            tmpResult = self._PackingTest.startReadAll(i);  # testResult = {'entropies': 0, 'packedFile': ''} 형태이다.
-            currentLoopCounter += 1;
-            
-            self.timerCounter = 100 * currentLoopCounter / fileListLength;
-            self.pbar.setValue(self.timerCounter);
-            
-            testResult.append(self._PackingTest.startReadAll(i));
-             
-            resultStr = str(tmpResult['entropies']) + ' <- ' +  tmpResult['packedFile'];
-             
+        for i in testResult:
+            resultStr = str(i['entropies']) + ' <- ' +  i['packedFile'];
             self.itemModel.appendRow(QStandardItem(resultStr));
              
         self.listView.setModel(self.itemModel);
