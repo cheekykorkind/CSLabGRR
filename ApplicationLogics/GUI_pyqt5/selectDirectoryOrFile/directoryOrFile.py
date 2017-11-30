@@ -1,3 +1,4 @@
+# coding: utf-8
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QLineEdit, QFileDialog
 
@@ -8,7 +9,7 @@ def selectFile(QWidget):
     fileName, _ = QFileDialog.getOpenFileName(QWidget,"QFileDialog.getOpenFileName()", "","All Files (*);;Python Files (*.py)", options=options)
     if fileName:
         print(fileName)
-# 폴더 선택
+# 디렉토리 선택
 def selectDirectory(QWidget):
     dialog = QFileDialog()
     folder_path = dialog.getExistingDirectory(None, "Select Folder")
