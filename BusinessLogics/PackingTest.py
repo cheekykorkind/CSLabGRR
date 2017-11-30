@@ -32,9 +32,44 @@ class PackingTest():
 		print('This is PackingTest.');
 		self.packingInfo = {'entropies': 0, 'packedFile': ''};
 		
-	
+
 	# 판단시작
 	def start(self, fileList, pbar, timerCounter):
+		packingInfoList = [];
+		currentLoopCounter = 0;		
+ 		
+		for file in fileList:
+			currentLoopCounter += 1;
+ 		
+			fh = open(file, 'rb');
+			if not self.checkMZSignature(fh): fh.close(); continue;	# PE파일이 아니면 종료
+ 			
+			IMAGE_DOS_HEADER_offset = 0;
+			IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
+			entryPointOffsets = self.getEntryPointOffset(fh, IMAGE_NT_HEADERS_offset);
+			if entryPointOffsets == 0: fh.close(); continue;	# WRITE 권한이 있는 섹션이 없으므로 종료
+ 			
+			entropy = self.getEntropys(fh, entryPointOffsets); 
+			if entropy >= 6.85:
+				packingInfo = {'entropies': 0, 'packedFile': ''};
+				packingInfo['entropies'] = entropy;
+				packingInfo['packedFile'] = file;
+			else:
+				packingInfo = {'entropies': 0, 'packedFile': ''};
+				packingInfo['entropies'] = entropy;
+				packingInfo['packedFile'] = 'x';
+ 			
+			packingInfoList.append(packingInfo);
+ 				
+			timerCounter = 100 * currentLoopCounter / len(fileList);
+			pbar.setValue(timerCounter);
+ 			
+			fh.close();  # 파일 닫기
+ 
+		return packingInfoList; 	
+	
+	# 엔트로피 상관없이 전부 진입점 검사는 개발용 메소드
+	def startNoEntropyCheck(self, fileList, pbar, timerCounter):
 		packingInfoList = [];
 		currentLoopCounter = 0;		
 		
@@ -64,7 +99,7 @@ class PackingTest():
 
 		return packingInfoList; 
 	
-	# 개발 단계에서 엔트로피 테스트용이다.
+	# 개발 단계에서 모든 바이너리 엔트로피를 구하는 메소드이다.
 	def startReadAll(self, fileList, pbar, timerCounter):
 
 		packingInfoList = [];
@@ -192,37 +227,3 @@ class PackingTest():
 			return int(reverseHexStr, 16);
 
 
-# 	# 판단시작
-# 	def start(self, fileList, pbar, timerCounter):
-# 		packingInfoList = [];
-# 		currentLoopCounter = 0;		
-# 		
-# 		for file in fileList:
-# 			currentLoopCounter += 1;
-# 		
-# 			fh = open(file, 'rb');
-# 			if not self.checkMZSignature(fh): fh.close(); pbar.setValue(100); return [];	# PE파일이 아니면 종료
-# 			
-# 			IMAGE_DOS_HEADER_offset = 0;
-# 			IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
-# 			entryPointOffsets = self.getEntryPointOffset(fh, IMAGE_NT_HEADERS_offset);
-# 			if entryPointOffsets == 0: fh.close(); pbar.setValue(100); return [];	# WRITE 권한이 있는 섹션이 없으므로 종료
-# 			
-# 			entropy = self.getEntropys(fh, entryPointOffsets); 
-# 			if entropy >= 6.85:
-# 				packingInfo = {'entropies': 0, 'packedFile': ''};
-# 				packingInfo['entropies'] = entropy;
-# 				packingInfo['packedFile'] = file;
-# 			else:
-# 				packingInfo = {'entropies': 0, 'packedFile': ''};
-# 				packingInfo['entropies'] = entropy;
-# 				packingInfo['packedFile'] = 'x';
-# 			
-# 			packingInfoList.append(packingInfo);
-# 				
-# 			timerCounter = 100 * currentLoopCounter / len(fileList);
-# 			pbar.setValue(timerCounter);
-# 			
-# 			fh.close();  # 파일 닫기
-# 
-# 		return packingInfoList; 	
