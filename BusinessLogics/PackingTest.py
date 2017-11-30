@@ -19,12 +19,10 @@ start함수
 	5) WRITE인 진입점 섹션의 offset에서 118byte 만큼 엔트로피 구해서 6.85이상이면 파일명과 경로 기록하기.
 	
 startReadAll함수
-의문 : 모든 바이트를 읽어서 엔트로피 값 테스트한 결과 패킹됬다는 샘플이 6.85에 이르지 못하고 있다. 샘플이 문제가 있거나 알고리즘에 문제가 있는거 같다.
-	2f4c2e708a955756612d2fa96640547e의 전체 엔트로피  : 3.9536290145622845
-	66ed25a173f6caf0a35f8c96e1ec7113의 전체 엔트로피 : 3.9813259473585294
-	154093269f2197d7cfb6a88fb37e3d97의 전체 엔트로피 : 3.9813706429418505
-	e5e91eb30de08cbe896ffa86d3fdb717의 전체 엔트로피 : 3.6462087259016687
-	DB Browser for SQLite.exe의 전체 엔트로피 : 3.5700363223190075
+개발 단계에서 모든 바이너리 엔트로피를 구하는 메소드이다.
+
+startNoEntropyCheck함수
+엔트로피 상관없이 전부 진입점 검사. 개발용 메소드
 '''
 
 class PackingTest():
@@ -68,7 +66,7 @@ class PackingTest():
  
 		return packingInfoList; 	
 	
-	# 엔트로피 상관없이 전부 진입점 검사는 개발용 메소드
+	# 엔트로피 상관없이 전부 진입점 검사. 개발용 메소드
 	def startNoEntropyCheck(self, fileList, pbar, timerCounter):
 		packingInfoList = [];
 		currentLoopCounter = 0;		
@@ -183,10 +181,7 @@ class PackingTest():
 		for i in entryPointOffsets:
 			fh.seek(i);
 			
-			whileCouter = 0;
-			while whileCouter < 118:
-				whileCouter += 1;
-				bytesStr += fh.read(1).hex();
+			bytesStr = fh.read(118).hex();
 				
 			p, lns = Counter(bytesStr), float(len(bytesStr));
 			entropy = -sum( count/lns * math.log(count/lns, 2) for count in p.values());
