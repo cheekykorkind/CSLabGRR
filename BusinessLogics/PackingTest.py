@@ -25,15 +25,14 @@ startReadAll함수
 	DB Browser for SQLite.exe의 전체 엔트로피 : 3.5700363223190075
 '''
 
-class PackintTest():
+class PackingTest():
 	def __init__(self):
-		print('This is PackintTest.');
-		self.fileName = 'DB Browser for SQLite.exe';
+		print('This is PackingTest.');
 		self.packingInfo = {'entropies': 0, 'packedFile': ''};
 	
 	# 판단시작
-	def start(self):
-		fh = open(self.fileName, 'rb');
+	def start(self, fileName):
+		fh = open(fileName, 'rb');
 		if not self.checkMZSignature(fh): fh.close(); return False;	# PE파일이 아니면 종료
  		
 		IMAGE_DOS_HEADER_offset = 0;
@@ -54,9 +53,12 @@ class PackintTest():
 			return self.packingInfo;			 
 
 	# 개발 단계에서 엔트로피 테스트용이다.
-	def startReadAll(self):
-		fh = open(self.fileName, 'rb');		
-		return self.readAll(fh);
+	def startReadAll(self, fileName):
+		fh = open(fileName, 'rb');
+		self.packingInfo['entropies'] = self.readAll(fh);
+		self.packingInfo['packedFile'] = 'x';
+		fh.close();  # 파일 닫기
+		return self.packingInfo; 
 		
 	# MZ signature를 확인해서 PE파일인지 확인한다.
 	def checkMZSignature(self, fh):
@@ -67,6 +69,7 @@ class PackintTest():
 		else:
 			print('MZ 없음.');
 			return False;
+			
 	# IMAGE_NT_HEADERS의 offset을 구한다.
 	def getIMAGE_NT_HEADERS_offset(self, fh):	
 		fh.seek(60);
@@ -161,3 +164,11 @@ class PackintTest():
 			hexStr = bytesStr.hex();
 			reverseHexStr = hexStr[6:8] + hexStr[4:6] + hexStr[2:4] + hexStr[0:2];
 			return int(reverseHexStr, 16);
+		
+#		 ddf = int(ord(FH.read(4)));
+#		 ddf = int(struct.pack('>L', FH.read(4)));
+#		 totallen = os.fstat(FH.fileno()).st_size;
+#		 print('File size is %d.' % totallen);		
+# f.seek(offset, from_what) 쓰면 원하는 위치를 읽을수있음.ㄴ		
+		# 00000108
+		# hex(int(reverseHexStr, 16)); str 타입으로 0x어쩌고 나옴
