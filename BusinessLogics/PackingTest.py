@@ -35,18 +35,18 @@ class PackingTest():
 	def start(self, fileList, pbar, timerCounter):
 		packingInfoList = [];
 		currentLoopCounter = 0;		
- 		
+		
 		for file in fileList:
 			currentLoopCounter += 1;
- 		
+		
 			fh = open(file, 'rb');
 			if not self.checkMZSignature(fh): fh.close(); continue;	# PE파일이 아니면 종료
- 			
+			
 			IMAGE_DOS_HEADER_offset = 0;
 			IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
 			entryPointOffsets = self.getEntryPointOffset(fh, IMAGE_NT_HEADERS_offset);
 			if entryPointOffsets == 0: fh.close(); continue;	# WRITE 권한이 있는 섹션이 없으므로 종료
- 			
+			
 			entropy = self.getEntropys(fh, entryPointOffsets); 
 			if entropy >= 6.85:
 				packingInfo = {'entropies': 0, 'packedFile': ''};
@@ -56,17 +56,17 @@ class PackingTest():
 				packingInfo = {'entropies': 0, 'packedFile': ''};
 				packingInfo['entropies'] = entropy;
 				packingInfo['packedFile'] = 'x';
- 			
+			
 			packingInfoList.append(packingInfo);
- 				
+				
 			timerCounter = 100 * currentLoopCounter / len(fileList);
 			pbar.setValue(timerCounter);
- 			
+			
 			fh.close();  # 파일 닫기
- 
+
 		return packingInfoList; 	
 	
-	# 엔트로피 상관없이 전부 진입점 검사. 개발용 메소드
+	# 엔트로피 상관없이 전부 진입점 검사는 개발용 메소드
 	def startNoEntropyCheck(self, fileList, pbar, timerCounter):
 		packingInfoList = [];
 		currentLoopCounter = 0;		
@@ -109,7 +109,7 @@ class PackingTest():
 			fh = open(file, 'rb');
 			packingInfo = {'entropies': 0, 'packedFile': ''};
 			packingInfo['entropies'] = self.readAll(fh);
-			packingInfo['packedFile'] = 'x';
+			packingInfo['packedFile'] = file;
 			packingInfoList.append(packingInfo);
 			
 			timerCounter = 100 * currentLoopCounter / len(fileList);
@@ -164,7 +164,9 @@ class PackingTest():
 		
 		while i < sectionsCounter:
 			if self.getCharacteristics(fh, initialOffset) >= hex80:
-				_IMAGE_SECTION_HEADER_offsets.append(initialOffset + 20);
+				fh.seek(initialOffset + 20);
+				
+				_IMAGE_SECTION_HEADER_offsets.append(self.getBytesStringValue(4, fh.read(4)));
 				print('WRITE 있다.');
 			else:
 				print('WRITE 없다.');
@@ -207,7 +209,7 @@ class PackingTest():
 
 		return entropy;
 	
-	# open(rb)의 결과인 bytes 타입의 값을 Little endian -> Big endian으로 바꾸고 hex String으로 바꾼다. 
+	# open(rb)의 결과인 bytes 타입의 값을 Little endian -> Big endian으로 바꾸고  DEC int로 바꾼다. 
 	def getBytesStringValue(self, bytesStrLength, bytesStr):
 		if bytesStrLength == 1:
 			hexStr = bytesStr.hex();

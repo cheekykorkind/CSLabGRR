@@ -82,7 +82,9 @@ class Form(QWidget):
         # 패킹 파일을 검사한다.
         testResult = [];
 #         testResult = self._PackingTest.start(fileList, self.pbar, self.timerCounter);
+#         testResult = self._PackingTest.startNoEntropyCheck(fileList, self.pbar, self.timerCounter);
         testResult = self._PackingTest.startReadAll(fileList, self.pbar, self.timerCounter);
+
         
         print("--- %s seconds ---" %(time.time() - start_time))
             
