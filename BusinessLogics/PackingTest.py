@@ -1,4 +1,4 @@
-#-*- coding: utf-8 -*-
+# coding: utf-8
 import sys
 import re
 import os, io
@@ -178,12 +178,16 @@ class PackingTest():
 	# Characteristics가 WRITE인 SECTION의 offset에서 118 byte만큼의 엔트로피값들을 구한다.
 	def getEntropys(self, fh, entryPointOffsets):
 		bytesStr = "";
+		readStr = "";
 		entropy = 0;
 		
 		for i in entryPointOffsets:
 			fh.seek(i);
 			
-			bytesStr = fh.read(118).hex();
+			readStr = fh.read(118);
+			readStrLen = len(readStr);
+			for i in range(readStrLen):
+				bytesStr += chr(readStr[i]);
 				
 			p, lns = Counter(bytesStr), float(len(bytesStr));
 			entropy = -sum( count/lns * math.log(count/lns, 2) for count in p.values());
@@ -199,11 +203,13 @@ class PackingTest():
 		fh.seek(0);
 
 		while True:
-			readStr = fh.read().hex();
+			readStr = fh.read();
 			readStrLen = len(readStr);
 			if readStrLen == 0: break;
-			bytesStr += readStr; 
 			
+			for i in range(readStrLen):
+				bytesStr += chr(readStr[i]);
+
 		p, lns = Counter(bytesStr), float(len(bytesStr));
 		entropy = -sum( count/lns * math.log(count/lns, 2) for count in p.values());
 
@@ -222,5 +228,3 @@ class PackingTest():
 			hexStr = bytesStr.hex();
 			reverseHexStr = hexStr[6:8] + hexStr[4:6] + hexStr[2:4] + hexStr[0:2];
 			return int(reverseHexStr, 16);
-
-
