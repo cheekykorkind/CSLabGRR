@@ -1,5 +1,7 @@
 # coding: utf-8
 import sys
+import re
+import paramiko
 
 from PyQt5.QtWidgets import QWidget, QPushButton, QGroupBox, QAbstractItemView, QBoxLayout, QListView, QFileDialog, QProgressBar  
 
@@ -80,16 +82,50 @@ class Form(QWidget):
         start_time = time.time()
         
         # 패킹 파일을 검사한다.
-        testResult = [];
-        testResult = self._PackingTest.start(fileList, self.pbar, self.timerCounter);
+        pathList = [];
+        packingTestResult = [];
+        packingTestResult = self._PackingTest.start(fileList, self.pbar, self.timerCounter);
         
         print("--- %s seconds ---" %(time.time() - start_time));
+        
+        # paramiko에 적절한 path로 String을 고친다.
+        for i in packingTestResult:
+            # 파일 이름 얻기
+            fullPath = i['packedFile'];
+            if fullPath == 'x': continue;   # 패킹 파일이 아니면 'x'가 들어있다. 'x'는 경로가 아니므로 무시한다.
             
-        for i in testResult:
-            resultStr = str(i['entropies']) + ' <- ' +  i['packedFile'];
-            self.itemModel.appendRow(QStandardItem(resultStr));
+            currentToken = re.search('\\\(\w*)', fullPath);
+            nextStrIndex = 0;
+            
+            # 폴더 선택하는 level에 따라서 backslash 개수가 달라진다. 예를 들어 하위 폴더가 2 level있는 폴더를 선택하면 backslash가 하위 경로에 2번 나타난다.
+            while(currentToken is not None):
+                if(nextStrIndex == 0):
+                    nextStrIndex = currentToken.start() + 1;
+                    currentToken = re.search('\\\(\w*)', fullPath[nextStrIndex:]);
+                    nextStr = fullPath[nextStrIndex:];
+                else:
+                    nextStrIndex = currentToken.start() + 1;
+                    currentToken = re.search('\\\(\w*)', nextStr[nextStrIndex:]);
+                    nextStr = nextStr[nextStrIndex:];
+                    
+            fileName = nextStr; 
+#             print(fileName);
              
+            # full path 얻기
+            fullPath = fullPath.replace('/', '\\').replace('\\', '\\\\'); 
+#             print(fullPath);
+            
+            # GUI에 출력하기
+            rowString = str(i['entropies']) + ' <- ' +  fullPath;
+            self.itemModel.appendRow(QStandardItem(rowString));
+            
+            pathInfo = {'fileName': fileName, 'fullPath': fullPath};
+            pathList.append(pathInfo);
+              
         self.listView.setModel(self.itemModel);
+        
+        # SFTP를 사용해서 Sever로 파일 전송한다.
+        self.transferFilesToSever(pathList);
 
     # 디렉토리 선택창을 띄우고 선택한 디렉토리의 경로를 반환한다.
     def selectDirectory(self):
@@ -102,4 +138,18 @@ class Form(QWidget):
         if self.timerCounter >= 100:
             self.progressTimer.stop()
             return
+    
+    # SFTP를 사용해서 Sever로 파일 전송한다.
+    def transferFilesToSever(self, pathList):
+        transport = paramiko.Transport(('IP', port));	# IP 및 port 번호 공개하지 않도록 주의
+        transport.connect(username='', password='');	# 계정 및 비밀번호 공개하지 않도록 주의
+        sftp = paramiko.SFTPClient.from_transport(transport);
 
+        for i in pathList:
+            uploadPath = '/경로/'+i['fileName'];	# 경로 공개하지 않도록 주의
+            localpath = i['fullPath'];
+        
+            sftp.put(localpath, uploadPath);
+          
+        sftp.close();
+        transport.close();

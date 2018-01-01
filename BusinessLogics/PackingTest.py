@@ -35,7 +35,10 @@ class PackingTest():
 			currentLoopCounter += 1;
 		
 			fh = open(file, 'rb');
-			if not self.checkMZSignature(fh): fh.close(); currentLoopCounter += 1; continue;	# MZ 시그니쳐를 가지고 있는가? 아니면 종료
+			if not self.checkMZSignature(fh):	# MZ 시그니쳐를 가지고 있는가? 아니면 종료
+				self.setProgressRate(pbar, currentLoopCounter, fileList);
+				fh.close();
+				continue;
 			
 			IMAGE_DOS_HEADER_offset = 0;
 			IMAGE_NT_HEADERS_offset = self.getIMAGE_NT_HEADERS_offset(fh);
@@ -44,7 +47,10 @@ class PackingTest():
 			
 			entryPointSectionOffset = self.getEntryPointSection(fh, IMAGE_NT_HEADERS_offset, addressOfEntryPoint);	# 진입점 색션의 offset을 찾는다.
 			
-			if not self.hasWriteAttribute(fh, entryPointSectionOffset): fh.close(); currentLoopCounter += 1; continue;	# 진입점 색션이 write 속성인가? 아니면 종료
+			if not self.hasWriteAttribute(fh, entryPointSectionOffset):	# 진입점 색션이 write 속성인가? 아니면 종료
+				self.setProgressRate(pbar, currentLoopCounter, fileList);				
+				fh.close();
+				continue;
 			
 			entropy = self.getEntropy(fh, entryPointSectionOffset); 	# write 속성이면, 진입점 색션의 entropy를 계산한다.
 			if entropy >= 6.85:
@@ -54,14 +60,12 @@ class PackingTest():
 			else:
 				packingInfo = {'entropies': 0, 'packedFile': ''};
 				packingInfo['entropies'] = entropy;
-				packingInfo['packedFile'] = file;	# 디버깅용
-# 				packingInfo['packedFile'] = 'x';	# release용 
+# 				packingInfo['packedFile'] = file;	# 디버깅용
+				packingInfo['packedFile'] = 'x';	# release용 
 			
 			packingInfoList.append(packingInfo);
 				
-			timerCounter = 100 * currentLoopCounter / len(fileList);
-			pbar.setValue(timerCounter);
-			
+			self.setProgressRate(pbar, currentLoopCounter, fileList);
 			fh.close();  # 파일 닫기
 
 		return packingInfoList; 	
@@ -86,9 +90,9 @@ class PackingTest():
 		fh.seek(self.getIMAGE_NT_HEADERS_offset(fh)+6);
 		return self.getBytesIntValue(2, fh.read(2));
 	
-	# 첫번째 IMAGE_NT_HEADERS의 offset을 찾는다.
+	# 첫번째 IMAGE_SECTION_HEADER의 offset을 찾는다.
 	def getInitialIMAGE_SECTION_HEADER_offset(self, fh, IMAGE_NT_HEADER_offset):
-		sizeOfOptionalHeaderOffset = IMAGE_NT_HEADER_offset+20;
+		sizeOfOptionalHeaderOffset = IMAGE_NT_HEADER_offset+20;	# IMAGE_FILE_HEADER의 attribute인 size of optional header의 offset이다.  
 		fh.seek(sizeOfOptionalHeaderOffset);
 		sizeOfOptionalHeader = self.getBytesIntValue(2, fh.read(2));
 		first = IMAGE_NT_HEADER_offset+24+sizeOfOptionalHeader;
@@ -204,3 +208,9 @@ class PackingTest():
 			hexStr = bytesStr.hex();
 			reverseHexStr = hexStr[6:8] + hexStr[4:6] + hexStr[2:4] + hexStr[0:2];
 			return int(reverseHexStr, 16);
+
+	# 프로그래스 바 진행도 반영시키는 함수
+	def setProgressRate(self, pbar, currentLoopCounter, fileList):
+		timerCounter = 100 * currentLoopCounter / len(fileList);
+		pbar.setValue(timerCounter);
+		
