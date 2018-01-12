@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import math
+import struct
 from collections import Counter
 
 '''
@@ -102,7 +103,8 @@ class PackingTest():
 	def getCharacteristics(self, fh, IMAGE_SECTION_HEADER_offset):
 		IMAGE_SCN_MEM_WRITE_offset = IMAGE_SECTION_HEADER_offset + 36 + 3;
 		fh.seek(IMAGE_SCN_MEM_WRITE_offset);
-		return self.getBytesIntValue(1, fh.read(1));
+		eeff = self.getBytesIntValue(1, fh.read(1));
+		return eeff;
 
 	# 진입점 색션을 찾는다.
 	def getEntryPointSection(self, fh, IMAGE_NT_HEADERS_offset, addressOfEntryPoint):
@@ -140,7 +142,8 @@ class PackingTest():
 	# 진입점 색션이 write 속성인가?
 	def hasWriteAttribute(self, fh, entryPointSectionOffset):
 		hex80 = int('0x80', 16);
-		if self.getCharacteristics(fh, entryPointSectionOffset) >= hex80:
+		rightNumber = self.getCharacteristics(fh, entryPointSectionOffset); 
+		if rightNumber >= hex80:
 			print('WRITE 있다.');
 			return True;
 		else:
@@ -198,16 +201,13 @@ class PackingTest():
 	# open(rb)의 결과인 bytes 타입의 값을 Little endian -> Big endian으로 바꾸고  DEC int로 바꾼다. 
 	def getBytesIntValue(self, bytesStrLength, bytesStr):
 		if bytesStrLength == 1:
-			hexStr = bytesStr.hex();
-			return int(hexStr, 16);
+			return struct.unpack("B", bytesStr)[0];
+
 		elif bytesStrLength == 2:
-			hexStr = bytesStr.hex();
-			reverseHexStr = hexStr[2:4] + hexStr[0:2];
-			return int(reverseHexStr, 16);
+			return struct.unpack("<h", bytesStr)[0];
+
 		elif bytesStrLength == 4:
-			hexStr = bytesStr.hex();
-			reverseHexStr = hexStr[6:8] + hexStr[4:6] + hexStr[2:4] + hexStr[0:2];
-			return int(reverseHexStr, 16);
+			return struct.unpack("<i", bytesStr)[0];
 
 	# 프로그래스 바 진행도 반영시키는 함수
 	def setProgressRate(self, pbar, currentLoopCounter, fileList):
